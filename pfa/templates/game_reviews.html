@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ game_name }} Reviews - Steam Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <style>
+        /* Use the app_id passed from Flask to set background */
+        .background-image {
+            background-image: url('https://steamcdn-a.akamaihd.net/steam/apps/{{ app_id }}/header.jpg');
+        }
+        
+        /* Keep all your existing CSS styles */
+        .background-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            overflow: hidden;
+        }
+        
+        .background-image {
+            /* The background-image is set above based on app_id */
+            position: absolute;
+            width: 120%;
+            height: 120%;
+            background-size: cover;
+            background-position: center;
+            filter: blur(15px) brightness(0.4);
+            transform: scale(1.1);
+            transition: transform 0.1s ease-out;
+            will-change: transform;
+        }
+        
+        .background-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(18, 18, 18, 0.85);
+            z-index: -1;
+        }
+        
+        /* Content container */
+        .content-container {
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* NEW: Game header with image */
+        .game-header-container {
+            margin-bottom: 40px;
+            text-align: center;
+        }
+        
+        .game-image-container {
+            width: 100%;
+            max-width: 600px;
+            height: 300px;
+            margin: 0 auto 25px auto;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+        }
+        
+        #gameHeaderImage {
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            {% if app_id and app_id != 'None' %}
+            background-image: url('https://steamcdn-a.akamaihd.net/steam/apps/{{ app_id }}/header.jpg');
+            {% else %}
+            background-image: url('https://images.unsplash.com/photo-1550745165-9bc0b252726f?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80');
+            {% endif %}
+        }
+        
+        .game-image-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, transparent 60%, rgba(18, 18, 18, 0.9));
+        }
+        
+        /* Game title with game info */
+        .game-title-section {
+            margin-bottom: 30px;
+        }
+        
+        .game-title-section h1 {
+            margin-bottom: 10px;
+            color: #fff;
+            font-size: 2rem;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+        
+        .game-subtitle {
+            color: #b0b0d0;
+            font-size: 1rem;
+            margin-bottom: 20px;
+        }
+        
+        .review-count-badge {
+            display: inline-block;
+            background: linear-gradient(90deg, #4a9eff, #6b5ce7);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        
+        /* Keep the rest of your CSS styles as they were */
+        .reviews-container {
+            margin-top: 20px;
+        }
+        
+        .reviews-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: rgba(37, 37, 56, 0.9);
+            border-radius: 12px;
+            border: 1px solid rgba(45, 45, 68, 0.8);
+            backdrop-filter: blur(10px);
+        }
+        
+        .sort-options {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(37, 37, 56, 0.9);
+            border-radius: 8px;
+            border: 1px solid rgba(45, 45, 68, 0.8);
+            backdrop-filter: blur(10px);
+        }
+        
+        .sort-button {
+            padding: 8px 16px;
+            background: rgba(30, 30, 46, 0.8);
+            border: 1px solid rgba(58, 58, 93, 0.8);
+            border-radius: 6px;
+            color: #b0b0d0;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+            backdrop-filter: blur(5px);
+        }
+        
+        .sort-button:hover {
+            background: rgba(45, 45, 68, 0.9);
+            border-color: #4a9eff;
+        }
+        
+        .sort-button.active {
+            background: linear-gradient(90deg, #4a9eff, #6b5ce7);
+            color: white;
+            border-color: #4a9eff;
+        }
+        
+        .reviews-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .review-card {
+            background: rgba(37, 37, 56, 0.9);
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid rgba(45, 45, 68, 0.8);
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+        }
+        
+        .review-card:hover {
+            border-color: #4a9eff;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        .review-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+        
+        .review-stats {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .stat-badge {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            background: rgba(30, 30, 46, 0.8);
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: #b0b0d0;
+            backdrop-filter: blur(5px);
+        }
+        
+        .vote-count {
+            color: #4a9eff;
+            font-weight: 600;
+        }
+        
+        .positive { color: #4CAF50; font-weight: bold; }
+        .negative { color: #F44336; font-weight: bold; }
+        
+        .recommended-badge {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            backdrop-filter: blur(5px);
+        }
+        
+        .recommended-yes {
+            background: rgba(76, 175, 80, 0.3);
+            color: #4CAF50;
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+        
+        .recommended-no {
+            background: rgba(244, 67, 54, 0.3);
+            color: #F44336;
+            border: 1px solid rgba(244, 67, 54, 0.3);
+        }
+        
+        .review-content {
+            margin-bottom: 15px;
+        }
+        
+        .review-text {
+            color: #fff;
+            line-height: 1.6;
+            font-size: 1rem;
+            max-height: 160px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .review-text.expanded {
+            max-height: none;
+        }
+        
+        .read-more {
+            background: none;
+            border: none;
+            color: #4a9eff;
+            cursor: pointer;
+            font-size: 0.9rem;
+            padding: 5px 0;
+            margin-top: 5px;
+            text-decoration: underline;
+            transition: color 0.2s;
+        }
+        
+        .read-more:hover {
+            color: #6b5ce7;
+        }
+        
+        .review-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 15px;
+            border-top: 1px solid rgba(45, 45, 68, 0.8);
+            font-size: 0.85rem;
+            color: #b0b0d0;
+        }
+        
+        .review-meta {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: rgba(37, 37, 56, 0.9);
+            color: #fff;
+            border: 1px solid rgba(58, 58, 93, 0.8);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            text-decoration: none;
+            backdrop-filter: blur(5px);
+        }
+        
+        .back-button:hover {
+            background: rgba(58, 58, 93, 0.9);
+            border-color: #4a9eff;
+            transform: translateY(-2px);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #b0b0d0;
+            background: rgba(37, 37, 56, 0.9);
+            border-radius: 12px;
+            border: 1px solid rgba(45, 45, 68, 0.8);
+            backdrop-filter: blur(10px);
+        }
+        
+        .empty-state h3 {
+            color: #fff;
+            margin-bottom: 10px;
+        }
+        
+        .review-tags {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .tag {
+            padding: 3px 8px;
+            background: rgba(30, 30, 46, 0.8);
+            border-radius: 4px;
+            font-size: 0.75rem;
+            color: #b0b0d0;
+            backdrop-filter: blur(5px);
+        }
+        
+        .tag.steam-purchase {
+            background: rgba(74, 158, 255, 0.3);
+            color: #4a9eff;
+            border: 1px solid rgba(74, 158, 255, 0.3);
+        }
+        
+        .tag.early-access {
+            background: rgba(255, 193, 7, 0.3);
+            color: #ffc107;
+            border: 1px solid rgba(255, 193, 7, 0.3);
+        }
+        
+        /* Loading animation */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #b0b0d0;
+        }
+        
+        .loading-spinner {
+            border: 3px solid rgba(37, 37, 56, 0.5);
+            border-top: 3px solid #4a9eff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(37, 37, 56, 0.5);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #4a9eff;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b5ce7;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .game-image-container {
+                height: 200px;
+                max-width: 90%;
+            }
+            
+            .reviews-header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: stretch;
+            }
+            
+            .sort-options {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .review-header {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .review-footer {
+                flex-direction: column;
+                gap: 10px;
+                align-items: flex-start;
+            }
+            
+            .review-meta {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .game-image-container {
+                height: 150px;
+            }
+            
+            .game-title-section h1 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Background image container -->
+<div class="background-container" id="backgroundContainer">
+    <div class="background-image" id="backgroundImage"></div>
+</div>
+<div class="background-overlay"></div>
+
+<!-- Top Bar -->
+<div class="top-bar">
+    <div class="radio-container">
+        <input id="radio-charts" name="radio" type="radio" />
+        <label for="radio-charts">Charts</label>
+
+        <input id="radio-reviews" name="radio" type="radio" checked/>
+        <label for="radio-reviews">Reviews</label>
+
+        <input id="radio-chatbot" name="radio" type="radio" />
+        <label for="radio-chatbot">Chatbot</label>
+
+        <div class="glider-container">
+            <div class="glider"></div>
+        </div>
+    </div>
+
+    <!-- Theme Switch -->
+    <label class="theme-switch">
+        <input type="checkbox" class="theme-switch__checkbox">
+        <div class="theme-switch__container">
+            <div class="theme-switch__clouds"></div>
+            <div class="theme-switch__stars-container">
+                <!-- SVG omitted for brevity -->
+            </div>
+            <div class="theme-switch__circle-container">
+                <div class="theme-switch__sun-moon-container">
+                    <div class="theme-switch__moon">
+                        <div class="theme-switch__spot"></div>
+                        <div class="theme-switch__spot"></div>
+                        <div class="theme-switch__spot"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </label>
+</div>
+
+<div class="wrapper content-container">
+    <!-- NEW: Game header with image -->
+    <div class="game-header-container">
+        <div class="game-image-container">
+            <div id="gameHeaderImage"></div>
+            <div class="game-image-overlay"></div>
+        </div>
+        
+        <div class="game-title-section">
+            <h1>{{ game_name }}</h1>
+            <div class="review-count-badge" id="reviewCountBadge">
+                {{ reviews|length }} Reviews Found
+            </div>
+            <p class="game-subtitle">
+                Browse and sort reviews below. Click "Read more" to view full review text.
+            </p>
+        </div>
+    </div>
+    
+    <!-- Sort Options -->
+    <div class="sort-options">
+        <button class="sort-button active" data-sort="helpful">Most Helpful</button>
+        <button class="sort-button" data-sort="funny">Most Funny</button>
+        <button class="sort-button" data-sort="newest">Newest</button>
+        <button class="sort-button" data-sort="oldest">Oldest</button>
+        <button class="sort-button" data-sort="positive">Positive First</button>
+        <button class="sort-button" data-sort="negative">Negative First</button>
+    </div>
+    
+    {% if reviews %}
+    <div class="reviews-container">
+        <div class="reviews-list" id="reviewsList">
+            {% for review in reviews %}
+            <div class="review-card" 
+                 data-helpful="{{ review.votes_helpful }}" 
+                 data-funny="{{ review.votes_funny }}"
+                 data-recommended="{{ 'true' if review.recommended else 'false' }}"
+                 data-playtime="{{ review.playtime or 0 }}"
+                 data-index="{{ loop.index }}">
+                <div class="review-header">
+                    <div class="review-stats">
+                        <div class="stat-badge vote-count">
+                            👍 {{ review.votes_helpful }}
+                        </div>
+                        <div class="stat-badge">
+                            😂 {{ review.votes_funny }}
+                        </div>
+                        <div class="stat-badge">
+                            ⏱️ {{ review.playtime|round(1) if review.playtime else 0 }}h
+                        </div>
+                    </div>
+                    <div class="recommended-badge {% if review.recommended %}recommended-yes{% else %}recommended-no{% endif %}">
+                        {{ "Recommended ✓" if review.recommended else "Not Recommended ✗" }}
+                    </div>
+                </div>
+                
+                <div class="review-content">
+                    <div class="review-text" id="reviewText{{ loop.index }}">
+                        {{ review.review }}
+                    </div>
+                    {% if review.review|length > 500 %}
+                    <button class="read-more" onclick="toggleReadMore({{ loop.index }})" id="readMoreBtn{{ loop.index }}">
+                        Read more
+                    </button>
+                    {% endif %}
+                    
+                    <div class="review-tags">
+                        {% if review.steam_purchase %}
+                        <span class="tag steam-purchase">Steam Purchase</span>
+                        {% endif %}
+                        {% if review.written_during_early_access %}
+                        <span class="tag early-access">Early Access</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="review-footer">
+                    <div class="review-meta">
+                        <span>Playtime: {{ review.playtime|round(1) if review.playtime else 0 }} hours</span>
+                        <span>•</span>
+                        <span>{{ "Steam Purchase" if review.steam_purchase else "Not Steam Purchase" }}</span>
+                        <span>•</span>
+                        <span>{{ "Early Access" if review.written_during_early_access else "Full Release" }}</span>
+                    </div>
+                    <div class="review-id">
+                        Review #{{ loop.index }}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <h3>No Reviews Found</h3>
+        <p>No reviews available for {{ game_name }}.</p>
+        <button class="back-button" onclick="window.location.href='/reviews'" style="margin-top: 20px;">
+            ← Back to All Games
+        </button>
+    </div>
+    {% endif %}
+    
+    {% if reviews %}
+    <div style="text-align: center; margin-top: 30px; padding: 20px;">
+        <button class="back-button" onclick="window.location.href='/reviews'">
+            ← Back to All Games
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    // Theme toggle
+    const themeSwitch = document.querySelector('.theme-switch__checkbox');
+    if (localStorage.getItem('theme') === 'dark') {
+        themeSwitch.checked = true;
+        document.body.style.background = 'transparent';
+        document.body.style.color = '#fff';
+    }
+    themeSwitch.addEventListener('change', () => {
+        if (themeSwitch.checked) {
+            document.body.style.background = 'transparent';
+            document.body.style.color = '#fff';
+            localStorage.setItem('theme', 'dark');
+        } else {
+            document.body.style.background = 'transparent';
+            document.body.style.color = '#000';
+            localStorage.setItem('theme', 'light');
+        }
+    });
+
+    // Navigation
+    document.getElementById('radio-charts').addEventListener('click', () => {
+        window.location.href = '/';
+    });
+    document.getElementById('radio-reviews').addEventListener('click', () => {
+        window.location.href = '/reviews';
+    });
+    document.getElementById('radio-chatbot').addEventListener('click', () => {
+        window.location.href = '/chatbot';
+    });
+
+    // Read more functionality
+    function toggleReadMore(index) {
+        const reviewText = document.getElementById(`reviewText${index}`);
+        const readMoreBtn = document.getElementById(`readMoreBtn${index}`);
+        
+        if (reviewText.classList.contains('expanded')) {
+            reviewText.classList.remove('expanded');
+            readMoreBtn.textContent = 'Read more';
+        } else {
+            reviewText.classList.add('expanded');
+            readMoreBtn.textContent = 'Read less';
+        }
+    }
+
+    // Initialize read more buttons for long reviews
+    document.addEventListener('DOMContentLoaded', function() {
+        const reviewTexts = document.querySelectorAll('.review-text');
+        let totalReviews = reviewTexts.length;
+        
+        // Update review count badge with actual count
+        document.getElementById('reviewCountBadge').textContent = `${totalReviews} Reviews Found`;
+        
+        reviewTexts.forEach((text, index) => {
+            // Check if text exceeds 500 characters
+            if (text.textContent.length > 500) {
+                // Truncate and add read more button
+                const originalText = text.textContent;
+                text.textContent = originalText.substring(0, 500) + '...';
+                text.dataset.fullText = originalText;
+                
+                // Create read more button if it doesn't exist
+                if (!text.nextElementSibling || !text.nextElementSibling.classList.contains('read-more')) {
+                    const readMoreBtn = document.createElement('button');
+                    readMoreBtn.className = 'read-more';
+                    readMoreBtn.textContent = 'Read more';
+                    readMoreBtn.onclick = function() {
+                        if (text.classList.contains('expanded')) {
+                            text.textContent = originalText.substring(0, 500) + '...';
+                            text.classList.remove('expanded');
+                            readMoreBtn.textContent = 'Read more';
+                        } else {
+                            text.textContent = originalText;
+                            text.classList.add('expanded');
+                            readMoreBtn.textContent = 'Read less';
+                        }
+                    };
+                    text.parentNode.insertBefore(readMoreBtn, text.nextSibling);
+                }
+            }
+        });
+        
+        // Add parallax effect for background if image is loaded
+        const backgroundImage = document.getElementById('backgroundImage');
+        document.addEventListener('mousemove', (e) => {
+            const x = e.clientX / window.innerWidth;
+            const y = e.clientY / window.innerHeight;
+            
+            const moveX = (x - 0.5) * 20;
+            const moveY = (y - 0.5) * 20;
+            
+            backgroundImage.style.transform = `translate(${moveX}px, ${moveY}px) scale(1.1)`;
+        });
+        
+        document.addEventListener('mouseleave', () => {
+            backgroundImage.style.transform = 'translate(0, 0) scale(1.1)';
+        });
+    });
+
+    // Sorting functionality
+    const sortButtons = document.querySelectorAll('.sort-button');
+    const reviewsList = document.getElementById('reviewsList');
+    
+    sortButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // Remove active class from all buttons
+            sortButtons.forEach(btn => btn.classList.remove('active'));
+            // Add active class to clicked button
+            this.classList.add('active');
+            
+            // Get current review cards
+            const reviewCards = Array.from(document.querySelectorAll('.review-card'));
+            const sortType = this.dataset.sort;
+            
+            // Sort review cards based on selected criteria
+            reviewCards.sort((a, b) => {
+                switch(sortType) {
+                    case 'helpful':
+                        return parseInt(b.dataset.helpful) - parseInt(a.dataset.helpful);
+                    case 'funny':
+                        return parseInt(b.dataset.funny) - parseInt(a.dataset.funny);
+                    case 'newest':
+                        // Assuming reviews are already sorted newest to oldest by default
+                        return parseInt(a.dataset.index) - parseInt(b.dataset.index);
+                    case 'oldest':
+                        // Reverse order for oldest
+                        return parseInt(b.dataset.index) - parseInt(a.dataset.index);
+                    case 'positive':
+                        if (a.dataset.recommended === 'true' && b.dataset.recommended === 'false') return -1;
+                        if (a.dataset.recommended === 'false' && b.dataset.recommended === 'true') return 1;
+                        return parseInt(b.dataset.helpful) - parseInt(a.dataset.helpful);
+                    case 'negative':
+                        if (a.dataset.recommended === 'false' && b.dataset.recommended === 'true') return -1;
+                        if (a.dataset.recommended === 'true' && b.dataset.recommended === 'false') return 1;
+                        return parseInt(b.dataset.helpful) - parseInt(a.dataset.helpful);
+                    default:
+                        return 0;
+                }
+            });
+            
+            // Clear and re-append sorted cards
+            reviewsList.innerHTML = '';
+            reviewCards.forEach(card => reviewsList.appendChild(card));
+            
+            // Update review numbers after sorting
+            updateReviewNumbers();
+            
+            // Update URL with sort parameter
+            const url = new URL(window.location.href);
+            url.searchParams.set('sort', sortType);
+            window.history.replaceState({}, '', url);
+        });
+    });
+
+    // Function to update review numbers after sorting
+    function updateReviewNumbers() {
+        const reviewCards = document.querySelectorAll('.review-card');
+        reviewCards.forEach((card, index) => {
+            const reviewId = card.querySelector('.review-id');
+            if (reviewId) {
+                reviewId.textContent = `Review #${index + 1}`;
+            }
+        });
+    }
+
+    // Check URL for sort parameter on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const sortParam = urlParams.get('sort');
+        
+        if (sortParam) {
+            // Find and click the corresponding sort button
+            const sortButton = document.querySelector(`.sort-button[data-sort="${sortParam}"]`);
+            if (sortButton) {
+                sortButton.click();
+            }
+        }
+        
+        // Initialize review numbers
+        updateReviewNumbers();
+    });
+
+    // Smooth scroll to top when sorting
+    sortButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+    });
+</script>
+
+
+</body>
+</html>

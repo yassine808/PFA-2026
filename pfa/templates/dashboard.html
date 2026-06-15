@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Steam Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+</head>
+<body>
+
+<!-- Filters -->
+<div class="filters" style="display: flex; justify-content: center; margin-bottom: 20px; gap: 10px;">
+    <div style="position: relative; width: 300px;">
+        <input type="text" id="gameSearch" placeholder="Search for a game..." autocomplete="off"
+               style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #555; background: #1f1f2e; color: #fff;">
+        <div id="gameSuggestions"
+             style="position: absolute; top: 36px; left: 0; right: 0; background: #1f1f2e; max-height: 200px; overflow-y: auto; border-radius: 6px; display: none; z-index: 100;">
+        </div>
+    </div>
+    <button id="resetFilter"
+            style="padding: 8px 16px; border-radius: 6px; border: none; background: #cf30aa; color: #fff; cursor: pointer;">
+        Reset
+    </button>
+</div>
+
+<!-- Top Bar -->
+<div class="top-bar">
+    <div class="radio-container">
+        <input checked id="radio-charts" name="radio" type="radio" checked/>
+        <label for="radio-charts">Charts</label>
+
+        <input id="radio-reviews" name="radio" type="radio" />
+        <label for="radio-reviews">Reviews</label>
+
+        <input id="radio-chatbot" name="radio" type="radio" />
+        <label for="radio-chatbot">Chatbot</label>
+
+        <div class="glider-container">
+            <div class="glider"></div>
+        </div>
+    </div>
+
+    <!-- Theme Switch -->
+    <label class="theme-switch">
+        <input type="checkbox" class="theme-switch__checkbox">
+        <div class="theme-switch__container">
+            <div class="theme-switch__clouds"></div>
+            <div class="theme-switch__stars-container">
+                <!-- SVG omitted for brevity -->
+            </div>
+            <div class="theme-switch__circle-container">
+                <div class="theme-switch__sun-moon-container">
+                    <div class="theme-switch__moon">
+                        <div class="theme-switch__spot"></div>
+                        <div class="theme-switch__spot"></div>
+                        <div class="theme-switch__spot"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </label>
+</div>
+
+ <!-- KPI Section -->
+        <div class="kpi-container">
+            <!-- Row 1 -->
+            <div class="kpi-card">
+                <span class="kpi-value" id="avgRating">{{ kpis.get('avgRating', '--') }}</span>
+                <span class="kpi-label">Average Rating</span>
+            </div>
+
+            <div class="kpi-card">
+                <span class="kpi-value" id="satisfaction">{{ kpis.get('satisfaction', '--') }}%</span>
+                <span class="kpi-label">Satisfaction</span>
+            </div>
+
+            <div class="kpi-card">
+                <span class="kpi-value" id="totalReviews">{{ kpis.get('totalReviews', '--') }}</span>
+                <span class="kpi-label">Total Reviews</span>
+            </div>
+
+            <div class="kpi-card">
+                <span class="kpi-value" id="change">{{ kpis.get('change', '--%') }}</span>
+                <span class="kpi-label">Change vs Last Period</span>
+            </div>
+            
+            <!-- Row 2 - New KPIs -->
+            <div class="kpi-card">
+                <span class="kpi-value" id="avgPlaytime">{{ kpis.get('avgPlaytimeHours', '--') }}h</span>
+                <span class="kpi-label">Avg Playtime</span>
+            </div>
+
+            <div class="kpi-card">
+                <span class="kpi-value" id="helpfulReviews">{{ kpis.get('helpfulReviewsPct', '--') }}%</span>
+                <span class="kpi-label">Helpful Reviews</span>
+            </div>
+
+            <div class="kpi-card">
+                <span class="kpi-value" id="steamPurchase">{{ kpis.get('steamPurchasePct', '--') }}%</span>
+                <span class="kpi-label">Steam Purchases</span>
+            </div>
+
+            <div class="kpi-card">
+                <span class="kpi-value" id="earlyAccess">{{ kpis.get('earlyAccessPct', '--') }}%</span>
+                <span class="kpi-label">Early Access</span>
+            </div>
+            
+            <!-- Row 3 - Additional KPIs (optional) -->
+            <div class="kpi-card">
+                <span class="kpi-value" id="experiencedPlayers">{{ kpis.get('experiencedPlayersPct', '--') }}%</span>
+                <span class="kpi-label">Experienced Players</span>
+            </div>
+
+            <div class="kpi-card">
+                <span class="kpi-value" id="avgHelpfulVotes">{{ kpis.get('avgHelpfulVotes', '--') }}</span>
+                <span class="kpi-label">Avg Helpful Votes</span>
+            </div>
+
+            <div class="kpi-card">
+                <span class="kpi-value" id="freeCopies">{{ kpis.get('freeCopyPct', '--') }}%</span>
+                <span class="kpi-label">Free Copies</span>
+            </div>
+
+            <div class="kpi-card">
+                <span class="kpi-value" id="totalGames">{{ bar_data|length }}</span>
+                <span class="kpi-label">Total Games</span>
+            </div>
+        </div>
+
+<!-- Charts -->
+<div class="wrapper">
+    <h2>Reviews per Game</h2>
+    <div class="chart-container">
+        <canvas id="barChart"></canvas>
+    </div>
+
+    <h2>Recommended vs Not Recommended</h2>
+    <div class="chart-container">
+        <canvas id="stackChart"></canvas>
+    </div>
+</div>
+
+<!-- Data -->
+<script>
+    window.barData = {{ bar_data | tojson }};
+    window.stackData = {{ stack_data | tojson }};
+</script>
+
+<!-- Dashboard JS -->
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script>
+    // Theme toggle with persistence
+    const themeSwitch = document.querySelector('.theme-switch__checkbox');
+
+    // Apply saved theme
+    if (localStorage.getItem('theme') === 'dark') {
+        themeSwitch.checked = true;
+        document.body.style.background = '#121212';
+        document.body.style.color = '#fff';
+    } else {
+        themeSwitch.checked = false;
+        document.body.style.background = '#fff';
+        document.body.style.color = '#000';
+    }
+
+    themeSwitch.addEventListener('change', () => {
+        if (themeSwitch.checked) {
+            document.body.style.background = '#121212';
+            document.body.style.color = '#fff';
+            localStorage.setItem('theme', 'dark');
+        } else {
+            document.body.style.background = '#fff';
+            document.body.style.color = '#000';
+            localStorage.setItem('theme', 'light');
+        }
+    });
+
+    // Navigation for radio buttons
+    document.getElementById('radio-charts').addEventListener('click', () => {
+        window.location.href = '/';
+    });
+    document.getElementById('radio-reviews').addEventListener('click', () => {
+        window.location.href = '/reviews';
+    });
+    document.getElementById('radio-chatbot').addEventListener('click', () => {
+        window.location.href = '/chatbot';
+    });
+</script>
+
+</body>
+</html>

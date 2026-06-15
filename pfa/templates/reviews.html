@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Steam Games - Reviews</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/reviews.css') }}">
+    <style>
+        /* Cool hover effect variables */
+        :root {
+            --glow-color: rgba(74, 158, 255, 0.3);
+            --shadow-color: rgba(74, 158, 255, 0.2);
+            --transition-speed: 0.4s;
+        }
+        
+        /* Improved Game Cards */
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .game-card {
+            background: rgba(37, 37, 56, 0.9);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(45, 45, 68, 0.8);
+            transition: all var(--transition-speed) cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            cursor: pointer;
+            position: relative;
+            transform-style: preserve-3d;
+            perspective: 1000px;
+        }
+        
+        /* Cool hover effect - 3D lift with glow */
+        .game-card:hover {
+            transform: translateY(-10px) translateZ(20px) scale(1.02);
+            border-color: #4a9eff;
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.6),
+                0 0 30px var(--shadow-color),
+                0 0 60px var(--glow-color),
+                inset 0 0 20px rgba(74, 158, 255, 0.1);
+        }
+        
+        /* Animated border glow effect */
+        .game-card::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, 
+                #4a9eff, #6b5ce7, #4a9eff, #6b5ce7);
+            border-radius: 14px;
+            z-index: -1;
+            opacity: 0;
+            transition: opacity var(--transition-speed) ease;
+            filter: blur(10px);
+        }
+        
+        .game-card:hover::before {
+            opacity: 1;
+            animation: borderGlow 3s linear infinite;
+        }
+        
+        @keyframes borderGlow {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+        
+        /* Floating particles effect */
+        .game-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(74, 158, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(107, 92, 231, 0.1) 0%, transparent 50%);
+            border-radius: 12px;
+            opacity: 0;
+            transition: opacity var(--transition-speed) ease;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .game-card:hover::after {
+            opacity: 1;
+        }
+        
+        .game-image-container {
+            height: 120px;
+            overflow: hidden;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .game-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            filter: brightness(0.9);
+        }
+        
+        .game-card:hover .game-image {
+            transform: scale(1.15) rotate(0.5deg);
+            filter: brightness(1.1) saturate(1.2);
+        }
+        
+        .game-content {
+            padding: 15px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .game-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 10px;
+            line-height: 1.4;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            transition: transform var(--transition-speed) ease;
+        }
+        
+        .game-card:hover .game-title {
+            transform: translateX(5px);
+        }
+        
+        .game-stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(45, 45, 68, 0.8);
+            transition: all var(--transition-speed) ease;
+        }
+        
+        .game-card:hover .game-stats {
+            border-bottom-color: rgba(74, 158, 255, 0.4);
+        }
+        
+        .game-reviews {
+            font-size: 0.85rem;
+            color: #b0b0d0;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all var(--transition-speed) ease;
+        }
+        
+        .game-card:hover .game-reviews {
+            color: #fff;
+        }
+        
+        .game-reviews::before {
+            content: '📝';
+            font-size: 0.9rem;
+            transition: transform var(--transition-speed) ease;
+        }
+        
+        .game-card:hover .game-reviews::before {
+            transform: scale(1.2);
+        }
+        
+        .game-rating {
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 12px;
+            min-width: 50px;
+            text-align: center;
+            transition: all var(--transition-speed) cubic-bezier(0.4, 0, 0.2, 1);
+            transform-origin: center;
+        }
+        
+        .game-card:hover .game-rating {
+            transform: scale(1.1) translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Dynamic rating colors - from red (0%) to green (100%) */
+        .rating-0 { background: rgba(244, 67, 54, 0.2); color: #f44336; border: 1px solid rgba(244, 67, 54, 0.3); }
+        .rating-10 { background: rgba(255, 87, 34, 0.2); color: #ff5722; border: 1px solid rgba(255, 87, 34, 0.3); }
+        .rating-20 { background: rgba(255, 152, 0, 0.2); color: #ff9800; border: 1px solid rgba(255, 152, 0, 0.3); }
+        .rating-30 { background: rgba(255, 193, 7, 0.2); color: #ffc107; border: 1px solid rgba(255, 193, 7, 0.3); }
+        .rating-40 { background: rgba(255, 235, 59, 0.2); color: #ffeb3b; border: 1px solid rgba(255, 235, 59, 0.3); }
+        .rating-50 { background: rgba(205, 220, 57, 0.2); color: #cddc39; border: 1px solid rgba(205, 220, 57, 0.3); }
+        .rating-60 { background: rgba(139, 195, 74, 0.2); color: #8bc34a; border: 1px solid rgba(139, 195, 74, 0.3); }
+        .rating-70 { background: rgba(76, 175, 80, 0.2); color: #4caf50; border: 1px solid rgba(76, 175, 80, 0.3); }
+        .rating-80 { background: rgba(67, 160, 71, 0.2); color: #43a047; border: 1px solid rgba(67, 160, 71, 0.3); }
+        .rating-90 { background: rgba(56, 142, 60, 0.2); color: #388e3c; border: 1px solid rgba(56, 142, 60, 0.3); }
+        .rating-100 { background: rgba(46, 125, 50, 0.2); color: #2e7d32; border: 1px solid rgba(46, 125, 50, 0.3); }
+        
+        .game-actions {
+            margin-top: auto;
+            padding-top: 10px;
+            border-top: 1px solid rgba(45, 45, 68, 0.5);
+            transition: border-color var(--transition-speed) ease;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .game-card:hover .game-actions {
+            border-top-color: rgba(74, 158, 255, 0.4);
+        }
+        
+        .view-reviews-btn {
+            width: 100%;
+            padding: 10px 15px;
+            background: linear-gradient(90deg, #4a9eff, #6b5ce7);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-decoration: none;
+            text-align: center;
+            display: block;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+            min-width: 0;
+            box-sizing: border-box;
+        }
+        
+        .view-reviews-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #6b5ce7, #4a9eff);
+            transition: left 0.4s ease;
+            z-index: -1;
+        }
+        
+        .view-reviews-btn:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 8px 20px rgba(74, 158, 255, 0.4);
+        }
+        
+        .view-reviews-btn:hover::before {
+            left: 0;
+        }
+        
+        /* Sparkle effect on button */
+        .view-reviews-btn::after {
+            content: '✨';
+            position: absolute;
+            top: 50%;
+            right: -20px;
+            transform: translateY(-50%);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .game-card:hover .view-reviews-btn::after {
+            right: 10px;
+            opacity: 1;
+        }
+        
+        /* Header and Search */
+        .games-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .games-header h1 {
+            color: #fff;
+            font-size: 1.8rem;
+            margin: 0;
+            background: linear-gradient(90deg, #4a9eff, #6b5ce7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .search-box {
+            padding: 10px 15px;
+            background: rgba(37, 37, 56, 0.9);
+            border: 1px solid rgba(45, 45, 68, 0.8);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.9rem;
+            width: 250px;
+            transition: all 0.3s;
+            backdrop-filter: blur(5px);
+        }
+        
+        .search-box:focus {
+            outline: none;
+            border-color: #4a9eff;
+            box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.2);
+        }
+        
+        .search-box::placeholder {
+            color: #6b6b8a;
+        }
+        
+        /* App ID badge */
+        .app-id-badge {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #b0b0d0;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-family: monospace;
+            backdrop-filter: blur(5px);
+            z-index: 2;
+            transition: all var(--transition-speed) ease;
+            border: 1px solid rgba(45, 45, 68, 0.8);
+        }
+        
+        .game-card:hover .app-id-badge {
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            border-color: rgba(74, 158, 255, 0.5);
+            transform: translateY(-2px);
+        }
+        
+        /* Games count badge */
+        .games-count {
+            display: inline-block;
+            background: rgba(37, 37, 56, 0.9);
+            color: #b0b0d0;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            margin-left: 10px;
+            border: 1px solid rgba(45, 45, 68, 0.8);
+        }
+        
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #b0b0d0;
+            background: rgba(37, 37, 56, 0.9);
+            border-radius: 12px;
+            border: 1px solid rgba(45, 45, 68, 0.8);
+            backdrop-filter: blur(10px);
+        }
+        
+        .empty-state h3 {
+            color: #fff;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+        
+        .empty-state p {
+            font-size: 0.9rem;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .games-grid {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+                gap: 15px;
+            }
+            
+            .games-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .games-header h1 {
+                text-align: center;
+                margin-bottom: 10px;
+            }
+            
+            .search-box {
+                width: 100%;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .games-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            
+            .game-card:hover {
+                transform: translateY(-8px) translateZ(10px) scale(1.02);
+            }
+            
+            .view-reviews-btn {
+                padding: 12px 15px;
+                font-size: 0.95rem;
+            }
+            
+            .view-reviews-btn::after {
+                display: none; /* Hide sparkle on mobile */
+            }
+        }
+        
+        /* Hover sound effect (optional - would need audio file) */
+        .game-card {
+            /* For future audio hover effect */
+            --hover-sound: none;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<div class="top-bar">
+    <div class="radio-container">
+        <input id="radio-charts" name="radio" type="radio" />
+        <label for="radio-charts">Charts</label>
+
+        <input id="radio-reviews" name="radio" type="radio" checked/>
+        <label for="radio-reviews">Reviews</label>
+
+        <input id="radio-chatbot" name="radio" type="radio" />
+        <label for="radio-chatbot">Chatbot</label>
+
+        <div class="glider-container">
+            <div class="glider"></div>
+        </div>
+    </div>
+
+    <!-- Theme Switch -->
+    <label class="theme-switch">
+        <input type="checkbox" class="theme-switch__checkbox">
+        <div class="theme-switch__container">
+            <div class="theme-switch__clouds"></div>
+            <div class="theme-switch__stars-container">
+                <!-- SVG omitted for brevity -->
+            </div>
+            <div class="theme-switch__circle-container">
+                <div class="theme-switch__sun-moon-container">
+                    <div class="theme-switch__moon">
+                        <div class="theme-switch__spot"></div>
+                        <div class="theme-switch__spot"></div>
+                        <div class="theme-switch__spot"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </label>
+</div>
+
+<div class="wrapper">
+    <div class="games-header">
+        <div>
+            <h1>Steam Games <span class="games-count">{{ games|length }} games</span></h1>
+        </div>
+        <input type="text" id="gameSearch" class="search-box" placeholder="Search games by name...">
+    </div>
+    
+    {% if games %}
+    <div class="games-grid" id="gamesGrid">
+        {% for game in games %}
+        {% set rating_class = 'rating-' ~ ((game.satisfaction_rate * 100) // 10 * 10)|int %}
+        <div class="game-card" data-game="{{ game.app_name.lower() }}" data-appid="{{ game.app_id }}">
+            <div class="game-image-container">
+                {% if game.app_id and game.app_id != 'None' %}
+                <div class="app-id-badge">ID: {{ game.app_id }}</div>
+                <img src="https://steamcdn-a.akamaihd.net/steam/apps/{{ game.app_id }}/header.jpg" 
+                     alt="{{ game.app_name }}" 
+                     class="game-image"
+                     onerror="this.onerror=null; this.src='https://steamcdn-a.akamaihd.net/steam/apps/{{ game.app_id }}/capsule_184x69.jpg';">
+                {% else %}
+                <div class="game-image" style="background: linear-gradient(135deg, #2a2a3e 0%, #1f1f2e 100%); display: flex; align-items: center; justify-content: center; color: #6b6b8a; font-size: 3rem;">
+                    🎮
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="game-content">
+                <div class="game-title" title="{{ game.app_name }}">
+                    {{ game.app_name }}
+                </div>
+                
+                <div class="game-stats">
+                    <div class="game-reviews">
+                        {{ "{:,}".format(game.review_count) }} reviews
+                    </div>
+                    <div class="game-rating {{ rating_class }}">
+                        {{ "%.0f"|format(game.satisfaction_rate * 100) }}%
+                    </div>
+                </div>
+                
+                <div class="game-actions">
+                    <a href="/game_reviews/{{ game.app_name }}" class="view-reviews-btn">
+                        View Reviews
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <h3>No Games Found</h3>
+        <p>The database doesn't contain any game information. Try refreshing or check your database connection.</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    // Theme toggle
+    const themeSwitch = document.querySelector('.theme-switch__checkbox');
+    if (localStorage.getItem('theme') === 'dark') {
+        themeSwitch.checked = true;
+        document.body.style.background = '#121212';
+        document.body.style.color = '#fff';
+    }
+    themeSwitch.addEventListener('change', () => {
+        if (themeSwitch.checked) {
+            document.body.style.background = '#121212';
+            document.body.style.color = '#fff';
+            localStorage.setItem('theme', 'dark');
+        } else {
+            document.body.style.background = '#fff';
+            document.body.style.color = '#000';
+            localStorage.setItem('theme', 'light');
+        }
+    });
+
+    // Navigation
+    document.getElementById('radio-charts').addEventListener('click', () => {
+        window.location.href = '/';
+    });
+    document.getElementById('radio-reviews').addEventListener('click', () => {
+        // Already on reviews page
+    });
+    document.getElementById('radio-chatbot').addEventListener('click', () => {
+        window.location.href = '/chatbot';
+    });
+
+    // Search functionality
+    const searchInput = document.getElementById('gameSearch');
+    const originalTitle = document.querySelector('h1').textContent;
+    const gamesCount = {{ games|length }};
+    
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase().trim();
+        const gameCards = document.querySelectorAll('.game-card');
+        let visibleCount = 0;
+        
+        gameCards.forEach(card => {
+            const gameName = card.getAttribute('data-game');
+            if (searchTerm === '' || gameName.includes(searchTerm)) {
+                card.style.display = 'flex';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+        
+        // Update header
+        const titleElement = document.querySelector('h1');
+        if (searchTerm === '') {
+            titleElement.innerHTML = `Steam Games <span class="games-count">${gamesCount} games</span>`;
+        } else {
+            titleElement.innerHTML = `Search Results <span class="games-count">${visibleCount} of ${gamesCount} games</span>`;
+        }
+    });
+
+    // Game card click - show game details
+    document.querySelectorAll('.game-card').forEach(card => {
+        card.addEventListener('click', function(e) {
+            // Don't trigger if clicking on the view reviews button or app-id badge
+            if (!e.target.classList.contains('view-reviews-btn') && 
+                !e.target.classList.contains('app-id-badge') &&
+                !e.target.closest('.app-id-badge')) {
+                
+                const gameName = this.querySelector('.game-title').textContent;
+                const appId = this.getAttribute('data-appid');
+                
+                // Redirect to Steam store page if appId exists
+                if (appId && appId !== 'None') {
+                    window.open(`https://store.steampowered.com/app/${appId}/`, '_blank');
+                } else {
+                    // Navigate to game reviews page
+                    window.location.href = `/game_reviews/${encodeURIComponent(gameName)}`;
+                }
+            }
+        });
+    });
+
+    // Add keyboard navigation for search
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            this.value = '';
+            this.dispatchEvent(new Event('input'));
+        }
+    });
+
+    // Focus search on Ctrl+F
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+            e.preventDefault();
+            searchInput.focus();
+        }
+    });
+
+    // Animate cards on load
+    document.addEventListener('DOMContentLoaded', function() {
+        const cards = document.querySelectorAll('.game-card');
+        cards.forEach((card, index) => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(30px) scale(0.95)';
+            
+            setTimeout(() => {
+                card.style.transition = 'opacity 0.6s ease, transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0) scale(1)';
+            }, index * 80);
+        });
+    });
+    
+    // Add subtle hover sound effect (optional)
+    document.querySelectorAll('.game-card').forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            // For future audio implementation
+            // if (window.hoverSound) {
+            //     window.hoverSound.currentTime = 0;
+            //     window.hoverSound.play();
+            // }
+            
+            // Create a subtle ripple effect
+            const ripple = document.createElement('div');
+            ripple.style.position = 'absolute';
+            ripple.style.borderRadius = '50%';
+            ripple.style.background = 'radial-gradient(circle, rgba(74, 158, 255, 0.2) 0%, transparent 70%)';
+            ripple.style.width = '100px';
+            ripple.style.height = '100px';
+            ripple.style.top = '50%';
+            ripple.style.left = '50%';
+            ripple.style.transform = 'translate(-50%, -50%) scale(0)';
+            ripple.style.pointerEvents = 'none';
+            ripple.style.zIndex = '0';
+            
+            this.appendChild(ripple);
+            
+            requestAnimationFrame(() => {
+                ripple.style.transition = 'transform 0.5s ease, opacity 0.5s ease';
+                ripple.style.transform = 'translate(-50%, -50%) scale(3)';
+                ripple.style.opacity = '0';
+                
+                setTimeout(() => {
+                    ripple.remove();
+                }, 500);
+            });
+        });
+    });
+</script>
+
+</body>
+</html>
