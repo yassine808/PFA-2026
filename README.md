@@ -2,11 +2,35 @@
 
 A web application for analyzing Steam game reviews using data visualization and an AI-powered chatbot.
 
+![Dashboard](readme_assets/dashboard.png)
+
 ## What It Does
 
 - **Dashboard** — Interactive charts showing review counts, recommendation rates, and key metrics (satisfaction, playtime, helpful votes, etc.) pulled from a Steam reviews database.
 - **Game Reviews** — Browse individual games and read their top reviews sorted by helpfulness.
 - **AI Chatbot** — Ask questions about the games in the database and get answers powered by a local LLM (Ollama + Gemma 3). The chatbot only uses data from the database — no made-up info.
+
+## Screenshots
+
+### Dashboard
+![Dashboard](readme_assets/dashboard.png)
+
+The main dashboard displays KPI cards (average rating, satisfaction rate, total reviews, playtime stats, etc.) along with interactive bar and stacked charts for review counts and recommendation ratios across all games.
+
+### Game Reviews
+![Game Reviews](readme_assets/game_reviews.png)
+
+Each game has its own reviews page with a header image, sort options (most helpful, most funny, newest, positive/negative first), and expandable review cards showing votes, playtime, purchase status, and early access tags.
+
+### All Games
+![Reviews](readme_assets/reviews.png)
+
+Browse the full list of games in the database, sorted by review count with satisfaction rates.
+
+### AI Chatbot
+![Chatbot](readme_assets/chatbot.png)
+
+The chatbot lets you ask questions about the games in the database. It uses a local Ollama model (Gemma 3 4B) and only answers from data found in the database — no hallucinated responses.
 
 ## Tech Stack
 
